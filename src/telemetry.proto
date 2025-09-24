@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+message GPSPacket {
+    double lat = 1;
+    double lng = 2;
+    double alt = 3;
+    double speed = 4;
+    double course = 5;
+    uint32 satellites = 6;
+}
+
+message TemperaturePacket {
+    float coolant = 1;
+    float air = 2;
+    float fuel = 3;
+    float oil = 4;
+}
+
+message SwitchesPacket {
+    bool neutral = 1;
+    bool gear_switch = 2;
+    bool clutch = 3;
+    bool oil_pressure_light = 4;
+    bool flat_shift = 5;
+    bool check_engine_light = 6;
+}
+
+message EnginePacket {
+    uint32 rpm = 1;
+    float manifold_pressure = 2;
+    float throttle_position = 3;
+    float fuel_pressure = 5;
+    float oil_pressure = 6;
+    float engine_demand = 7;
+    float sensor_1 = 8;
+    float sensor_2 = 9;
+    float overall = 10;
+    float vehicle_speed = 11;
+    float battery_voltage = 12;
+    float barometric_pressure = 13;
+    TemperaturePacket temperature = 14;
+    SwitchesPacket switches = 15;
+    float steering_angle = 16;
+    float travel_front_left = 17;
+    float travel_rear_left = 18;
+    float travel_front_right = 19;
+    float travel_rear_right = 20;
+    uint32 gear = 21;
+    uint32 gear_selector_position = 22;
+}
+
+message TelemetryPacket {
+    uint32 timestamp = 1;
+    float voltage = 2;
+    bool can_connected = 3;
+    uint32 can_messages = 4;
+    bool gps_valid = 5;
+    GPSPacket gps = 6;
+    EnginePacket engine = 7;
+}

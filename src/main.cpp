@@ -1,10 +1,13 @@
 #include <Arduino.h>
-#include <ArduinoJson.h>
 #include <FlexCAN_T4.h>
 #include <TinyGPS++.h>
+#include <pb_encode.h>
 
 // Include the DBC-generated header
 #include "haltech.h"
+
+// Include Protobuf header
+#include "./telemetry.pb.h"
 
 // CAN bus setup for Teensy 4.1
 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1; // Connected to Haltect ECU
@@ -19,8 +22,8 @@ TinyGPSPlus gps;
 // Voltage Regulator Status (monitored via analog input)
 const int VOLTAGE_REG_PIN = A0;
 
-// JSON document for telemetry serialization
-StaticJsonDocument<2048> telemetryDoc;
+// Buffer for protobuf encoding
+uint8_t protobuf_buffer[TelemetryPacket_size];
 
 // Timing variables
 unsigned long lastCanUpdateTime = 0;
@@ -248,101 +251,100 @@ void processGpsData()
 void sendTelemetry()
 {
   // Clear previous data
-  telemetryDoc.clear();
+  TelemetryPacket msg = TelemetryPacket_init_zero;
 
   // Add timestamp
-  telemetryDoc["timestamp"] = millis();
+  msg.timestamp = millis();
 
   // Add system voltage
-  telemetryDoc["voltage"] = readRegulatorVoltage();
+  msg.voltage = readRegulatorVoltage();
 
   // Add CAN connection status
-  telemetryDoc["can_connected"] = canConnected;
-  telemetryDoc["can_messages"] = canMessageCount;
+  msg.can_connected = canConnected;
+  msg.can_messages = canMessageCount;
 
   // Add GPS data if valid
-  telemetryDoc["gps_valid"] = gps.location.isValid();
+  msg.gps_valid = gps.location.isValid();
   if (gps.location.isValid())
   {
-    JsonObject gpsObj = telemetryDoc.createNestedObject("gps");
-    gpsObj["lat"] = gps.location.lat();
-    gpsObj["lng"] = gps.location.lng();
-    gpsObj["alt"] = gps.altitude.meters();
-    gpsObj["speed"] = gps.speed.kmph();
-    gpsObj["course"] = gps.course.deg();
-    gpsObj["satellites"] = gps.satellites.value();
-
-    if (gps.date.isValid() && gps.time.isValid())
-    {
-      char dateTime[30];
-      sprintf(dateTime, "20%02d-%02d-%02dT%02d:%02d:%02dZ", gps.date.year(),
-              gps.date.month(), gps.date.day(), gps.time.hour(),
-              gps.time.minute(), gps.time.second());
-      gpsObj["datetime"] = dateTime;
-    }
+    msg.has_gps = true;
+    msg.gps.lat = gps.location.lat();
+    msg.gps.lng = gps.location.lng();
+    msg.gps.alt = gps.altitude.meters();
+    msg.gps.speed = gps.speed.kmph();
+    msg.gps.course = gps.course.deg();
+    msg.gps.satellites = gps.satellites.value();
   }
 
   // Add engine data only if we have valid CAN data
   if (canConnected)
   {
-    JsonObject engineObj = telemetryDoc.createNestedObject("engine");
+    msg.has_engine = true;
+    EnginePacket *eng = &msg.engine;
 
     // Group 0 (Engine basics)
-    engineObj["rpm"] = haltech_group00_rpm_decode(group0.rpm);
-    engineObj["manifold_pressure"] = haltech_group00_manifold_pressure_decode(group0.manifold_pressure);
-    engineObj["throttle_position"] = haltech_group00_throttle_position_decode(group0.throttle_position);
+    eng->rpm = haltech_group00_rpm_decode(group0.rpm);
+    eng->manifold_pressure = haltech_group00_manifold_pressure_decode(group0.manifold_pressure);
+    eng->throttle_position = haltech_group00_throttle_position_decode(group0.throttle_position);
 
     // Group 1 (Pressures)
-    engineObj["fuel_pressure"] = haltech_group01_fuel_pressure_decode(group1.fuel_pressure);
-    engineObj["oil_pressure"] = haltech_group01_oil_pressure_decode(group1.oil_pressure);
-    engineObj["engine_demand"] = haltech_group01_engine_demand_decode(group1.engine_demand);
+    eng->fuel_pressure = haltech_group01_fuel_pressure_decode(group1.fuel_pressure);
+    eng->oil_pressure = haltech_group01_oil_pressure_decode(group1.oil_pressure);
+    eng->engine_demand = haltech_group01_engine_demand_decode(group1.engine_demand);
 
     // Group 5 & 39 (Wideband sensors)
-    JsonObject wideband = engineObj.createNestedObject("wideband");
-    wideband["sensor_1"] = haltech_group05_wideband_sensor_1_decode(group5.wideband_sensor_1);
-    wideband["sensor_2"] = haltech_group05_wideband_sensor_2_decode(group5.wideband_sensor_2);
-    wideband["overall"] = haltech_group39_wideband_overall_decode(group39.wideband_overall);
+    eng->sensor_1 = haltech_group05_wideband_sensor_1_decode(group5.wideband_sensor_1);
+    eng->sensor_2 = haltech_group05_wideband_sensor_2_decode(group5.wideband_sensor_2);
+    eng->overall = haltech_group39_wideband_overall_decode(group39.wideband_overall);
 
     // Group 13 (Vehicle speed)
-    engineObj["vehicle_speed"] = haltech_group13_vehicle_speed_decode(group13.vehicle_speed);
+    eng->vehicle_speed = haltech_group13_vehicle_speed_decode(group13.vehicle_speed);
 
     // Group 15 (Battery and boost)
-    engineObj["battery_voltage"] = haltech_group15_battery_voltage_decode(group15.battery_voltage);
-    engineObj["barometric_pressure"] = haltech_group15_barometric_pressure_decode(group15.barometric_pressure);
+    eng->battery_voltage = haltech_group15_battery_voltage_decode(group15.battery_voltage);
+    eng->barometric_pressure = haltech_group15_barometric_pressure_decode(group15.barometric_pressure);
 
     // Group 20 (Temperatures)
-    JsonObject temps = engineObj.createNestedObject("temperature");
-    temps["coolant"] = haltech_group20_coolant_temperature_decode(group20.coolant_temperature);
-    temps["air"] = haltech_group20_air_temperature_decode(group20.air_temperature);
-    temps["fuel"] = haltech_group20_fuel_temperature_decode(group20.fuel_temperature);
-    temps["oil"] = haltech_group20_oil_temperature_decode(group20.oil_temperature);
+    eng->has_temperature = true;
+    eng->temperature.coolant = haltech_group20_coolant_temperature_decode(group20.coolant_temperature);
+    eng->temperature.air = haltech_group20_air_temperature_decode(group20.air_temperature);
+    eng->temperature.fuel = haltech_group20_fuel_temperature_decode(group20.fuel_temperature);
+    eng->temperature.oil = haltech_group20_oil_temperature_decode(group20.oil_temperature);
 
     // Group 24 (Switches and indicators)
-    JsonObject switches = engineObj.createNestedObject("switches");
-    switches["neutral"] = haltech_group24_neutral_switch_decode(group24.neutral_switch);
-    switches["gear"] = haltech_group24_gear_switch_decode(group24.gear_switch);
-    switches["clutch"] = haltech_group24_clutch_switch_decode(group24.clutch_switch);
-    switches["oil_pressure_light"] = haltech_group24_oil_pressure_light_decode(group24.oil_pressure_light);
-    switches["flat_shift"] = haltech_group24_flat_shift_switch_decode(group24.flat_shift_switch);
-    switches["check_engine_light"] = haltech_group24_check_engine_light_decode(group24.check_engine_light);
+    eng->has_switches = true;
+    eng->switches.neutral = haltech_group24_neutral_switch_decode(group24.neutral_switch);
+    eng->switches.gear_switch = haltech_group24_gear_switch_decode(group24.gear_switch);
+    eng->switches.clutch = haltech_group24_clutch_switch_decode(group24.clutch_switch);
+    eng->switches.oil_pressure_light = haltech_group24_oil_pressure_light_decode(group24.oil_pressure_light);
+    eng->switches.flat_shift = haltech_group24_flat_shift_switch_decode(group24.flat_shift_switch);
+    eng->switches.check_engine_light = haltech_group24_check_engine_light_decode(group24.check_engine_light);
 
     // Group 25 (Steering angle)
-    engineObj["steering_angle"] = haltech_group25_steering_wheel_angle_decode(group25.steering_wheel_angle);
+    eng->steering_angle = haltech_group25_steering_wheel_angle_decode(group25.steering_wheel_angle);
 
     // Group 37 (Damper travel)
-    engineObj["travel_front_left"] = haltech_group37_shock_travel_sensor_front_left_decode(group37.shock_travel_sensor_front_left);
-    engineObj["travel_rear_left"] = haltech_group37_shock_travel_sensor_rear_left_decode(group37.shock_travel_sensor_rear_left);
-    engineObj["travel_front_right"] = haltech_group37_shock_travel_sensor_front_right_decode(group37.shock_travel_sensor_front_right);
-    engineObj["travel_rear_right"] = haltech_group37_shock_travel_sensor_rear_right_decode(group37.shock_travel_sensor_rear_right);
+    eng->travel_front_left = haltech_group37_shock_travel_sensor_front_left_decode(group37.shock_travel_sensor_front_left);
+    eng->travel_rear_left = haltech_group37_shock_travel_sensor_rear_left_decode(group37.shock_travel_sensor_rear_left);
+    eng->travel_front_right = haltech_group37_shock_travel_sensor_front_right_decode(group37.shock_travel_sensor_front_right);
+    eng->travel_rear_right = haltech_group37_shock_travel_sensor_rear_right_decode(group37.shock_travel_sensor_rear_right);
 
     // Group 39 (Gear info)
-    engineObj["gear"] = haltech_group39_gear_decode(group39.gear);
-    engineObj["gear_selector_position"] = haltech_group39_gear_selector_position_decode(group39.gear_selector_position);
+    eng->gear = haltech_group39_gear_decode(group39.gear);
+    eng->gear_selector_position = haltech_group39_gear_selector_position_decode(group39.gear_selector_position);
   }
 
-  // Send the JSON data via radio
-  serializeJson(telemetryDoc, RADIO_SERIAL);
-  RADIO_SERIAL.println(); // Add newline for easier parsing
+  // Encode protobuf message
+  pb_ostream_t stream = pb_ostream_from_buffer(protobuf_buffer, sizeof(protobuf_buffer));
+  bool status = pb_encode(&stream, TelemetryPacket_fields, &msg);
+
+  if (status) {
+    // Send the protobuf data via radio
+    RADIO_SERIAL.write(protobuf_buffer, stream.bytes_written);
+    RADIO_SERIAL.println(); // Add newline for easier parsing
+  } else {
+    Serial.println("Protobuf encoding failed");
+  }
 
   telemetrySentCount++;
 
