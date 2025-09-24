@@ -7,7 +7,7 @@
 #include "haltech.h"
 
 // CAN bus setup for Teensy 4.1
-FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1; // Connected to Haltect R6
+FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1; // Connected to Haltect ECU
 
 // GPS setup
 TinyGPSPlus gps;
@@ -289,81 +289,45 @@ void sendTelemetry()
 
     // Group 0 (Engine basics)
     engineObj["rpm"] = haltech_group00_rpm_decode(group0.rpm);
-    engineObj["manifold_pressure"] =
-        haltech_group00_manifold_pressure_decode(group0.manifold_pressure);
-    engineObj["throttle_position"] =
-        haltech_group00_throttle_position_decode(group0.throttle_position);
-    engineObj["coolant_pressure"] =
-        haltech_group00_coolant_pressure_decode(group0.coolant_pressure);
+    engineObj["manifold_pressure"] = haltech_group00_manifold_pressure_decode(group0.manifold_pressure);
+    engineObj["throttle_position"] = haltech_group00_throttle_position_decode(group0.throttle_position);
 
     // Group 1 (Pressures)
-    engineObj["fuel_pressure"] =
-        haltech_group01_fuel_pressure_decode(group1.fuel_pressure);
-    engineObj["oil_pressure"] =
-        haltech_group01_oil_pressure_decode(group1.oil_pressure);
-    engineObj["engine_demand"] =
-        haltech_group01_engine_demand_decode(group1.engine_demand);
-    engineObj["wastegate_pressure"] =
-        haltech_group01_wastegate_pressure_decode(group1.wastegate_pressure);
+    engineObj["fuel_pressure"] = haltech_group01_fuel_pressure_decode(group1.fuel_pressure);
+    engineObj["oil_pressure"] = haltech_group01_oil_pressure_decode(group1.oil_pressure);
+    engineObj["engine_demand"] = haltech_group01_engine_demand_decode(group1.engine_demand);
 
     // Group 5 & 39 (Wideband sensors)
     JsonObject wideband = engineObj.createNestedObject("wideband");
-    wideband["sensor_1"] =
-        haltech_group05_wideband_sensor_1_decode(group5.wideband_sensor_1);
-    wideband["sensor_2"] =
-        haltech_group05_wideband_sensor_2_decode(group5.wideband_sensor_2);
-    wideband["sensor_3"] =
-        haltech_group05_wideband_sensor_3_decode(group5.wideband_sensor_3);
-    wideband["sensor_4"] =
-        haltech_group05_wideband_sensor_4_decode(group5.wideband_sensor_4);
-    wideband["overall"] =
-        haltech_group39_wideband_overall_decode(group39.wideband_overall);
-    wideband["bank_1"] =
-        haltech_group39_wideband_bank_1_decode(group39.wideband_bank_1);
-    wideband["bank_2"] =
-        haltech_group39_wideband_bank_2_decode(group39.wideband_bank_2);
+    wideband["sensor_1"] = haltech_group05_wideband_sensor_1_decode(group5.wideband_sensor_1);
+    wideband["sensor_2"] = haltech_group05_wideband_sensor_2_decode(group5.wideband_sensor_2);
+    wideband["overall"] = haltech_group39_wideband_overall_decode(group39.wideband_overall);
 
-    // Group 13 (Vehicle speed and cam angles)
-    engineObj["vehicle_speed"] =
-        haltech_group13_vehicle_speed_decode(group13.vehicle_speed);
-    engineObj["intake_cam_angle_1"] =
-        haltech_group13_intake_cam_angle_1_decode(group13.intake_cam_angle_1);
-    engineObj["intake_cam_angle_2"] =
-        haltech_group13_intake_cam_angle_2_decode(group13.intake_cam_angle_2);
+    // Group 13 (Vehicle speed)
+    engineObj["vehicle_speed"] = haltech_group13_vehicle_speed_decode(group13.vehicle_speed);
 
     // Group 15 (Battery and boost)
-    engineObj["battery_voltage"] =
-        haltech_group15_battery_voltage_decode(group15.battery_voltage);
-    engineObj["target_boost_level"] =
-        haltech_group15_target_boost_level_decode(group15.target_boost_level);
-    engineObj["barometric_pressure"] =
-        haltech_group15_barometric_pressure_decode(group15.barometric_pressure);
+    engineObj["battery_voltage"] = haltech_group15_battery_voltage_decode(group15.battery_voltage);
+    engineObj["barometric_pressure"] = haltech_group15_barometric_pressure_decode(group15.barometric_pressure);
 
     // Group 20 (Temperatures)
     JsonObject temps = engineObj.createNestedObject("temperature");
-    temps["coolant"] =
-        haltech_group20_coolant_temperature_decode(group20.coolant_temperature);
+    temps["coolant"] = haltech_group20_coolant_temperature_decode(group20.coolant_temperature);
     temps["air"] = haltech_group20_air_temperature_decode(group20.air_temperature);
-    temps["fuel"] =
-        haltech_group20_fuel_temperature_decode(group20.fuel_temperature);
+    temps["fuel"] = haltech_group20_fuel_temperature_decode(group20.fuel_temperature);
     temps["oil"] = haltech_group20_oil_temperature_decode(group20.oil_temperature);
 
     // Group 24 (Switches and indicators)
     JsonObject switches = engineObj.createNestedObject("switches");
-    switches["neutral"] =
-        haltech_group24_neutral_switch_decode(group24.neutral_switch);
+    switches["neutral"] = haltech_group24_neutral_switch_decode(group24.neutral_switch);
     switches["gear"] = haltech_group24_gear_switch_decode(group24.gear_switch);
     switches["clutch"] = haltech_group24_clutch_switch_decode(group24.clutch_switch);
-    switches["oil_pressure_light"] =
-        haltech_group24_oil_pressure_light_decode(group24.oil_pressure_light);
-    switches["flat_shift"] =
-        haltech_group24_flat_shift_switch_decode(group24.flat_shift_switch);
-    switches["check_engine_light"] =
-        haltech_group24_check_engine_light_decode(group24.check_engine_light);
+    switches["oil_pressure_light"] = haltech_group24_oil_pressure_light_decode(group24.oil_pressure_light);
+    switches["flat_shift"] = haltech_group24_flat_shift_switch_decode(group24.flat_shift_switch);
+    switches["check_engine_light"] = haltech_group24_check_engine_light_decode(group24.check_engine_light);
 
     // Group 25 (Steering angle)
-    engineObj["steering_angle"] =
-        haltech_group25_steering_wheel_angle_decode(group25.steering_wheel_angle);
+    engineObj["steering_angle"] = haltech_group25_steering_wheel_angle_decode(group25.steering_wheel_angle);
 
     // Group 37 (Damper travel)
     engineObj["travel_front_left"] = haltech_group37_shock_travel_sensor_front_left_decode(group37.shock_travel_sensor_front_left);
@@ -373,8 +337,7 @@ void sendTelemetry()
 
     // Group 39 (Gear info)
     engineObj["gear"] = haltech_group39_gear_decode(group39.gear);
-    engineObj["gear_selector_position"] =
-        haltech_group39_gear_selector_position_decode(group39.gear_selector_position);
+    engineObj["gear_selector_position"] = haltech_group39_gear_selector_position_decode(group39.gear_selector_position);
   }
 
   // Send the JSON data via radio
