@@ -66,7 +66,7 @@ void setup()
   Serial.println("\n=== Telemetry Data Logger Starting ===");
 
   // Initialize GPS serial
-  GPS_SERIAL.begin(9600);
+  GPS_SERIAL.begin(115200);
   Serial.println("GPS initialized on Serial2");
 
   // Initialize radio serial (transmit only)
