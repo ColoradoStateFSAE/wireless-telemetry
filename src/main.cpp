@@ -42,6 +42,8 @@ struct haltech_group13_t group13;
 struct haltech_group15_t group15;
 struct haltech_group20_t group20;
 struct haltech_group24_t group24;
+struct haltech_group25_t group25;
+struct haltech_group37_t group37;
 struct haltech_group39_t group39;
 
 // Debug counters
@@ -56,7 +58,8 @@ void sendTelemetry();
 float readRegulatorVoltage();
 void debugStatus();
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
   delay(1000);
 
@@ -84,6 +87,8 @@ void setup() {
   memset(&group15, 0, sizeof(group15));
   memset(&group20, 0, sizeof(group20));
   memset(&group24, 0, sizeof(group24));
+  memset(&group25, 0, sizeof(group25));
+  memset(&group37, 0, sizeof(group37));
   memset(&group39, 0, sizeof(group39));
 
   Serial.println("=== System initialized and ready ===\n");
@@ -92,7 +97,8 @@ void setup() {
   debugStatus();
 }
 
-void setupCAN() {
+void setupCAN()
+{
   Serial.println("Initializing CAN bus...");
 
   // Initialize CAN1 - Connection to Haltect R6
@@ -109,6 +115,8 @@ void setupCAN() {
   can1.setMB(MB5, RX, STD);
   can1.setMB(MB6, RX, STD);
   can1.setMB(MB7, RX, STD);
+  can1.setMB(MB8, RX, STD);
+  can1.setMB(MB9, RX, STD);
 
   can1.setMBFilter(REJECT_ALL);
   can1.setMBFilterRange(MB0, HALTECH_GROUP00_FRAME_ID,
@@ -125,51 +133,63 @@ void setupCAN() {
                         HALTECH_GROUP20_FRAME_ID);
   can1.setMBFilterRange(MB6, HALTECH_GROUP24_FRAME_ID,
                         HALTECH_GROUP24_FRAME_ID);
-  can1.setMBFilterRange(MB7, HALTECH_GROUP39_FRAME_ID,
+  can1.setMBFilterRange(MB7, HALTECH_GROUP25_FRAME_ID,
+                        HALTECH_GROUP25_FRAME_ID);
+  can1.setMBFilterRange(MB8, HALTECH_GROUP37_FRAME_ID,
+                        HALTECH_GROUP37_FRAME_ID);
+  can1.setMBFilterRange(MB9, HALTECH_GROUP39_FRAME_ID,
                         HALTECH_GROUP39_FRAME_ID);
 
   Serial.println(
-      "CAN filters configured for groups: 0, 1, 5, 13, 15, 20, 24, 39");
+      "CAN filters configured for groups: 0, 1, 5, 13, 15, 20, 24, 25, 37, 39");
   Serial.println("CAN bus initialization complete");
 }
 
-void loop() {
+void loop()
+{
   unsigned long currentMillis = millis();
 
   // Check for CAN messages (highest priority)
-  if (currentMillis - lastCanUpdateTime >= CAN_UPDATE_INTERVAL) {
+  if (currentMillis - lastCanUpdateTime >= CAN_UPDATE_INTERVAL)
+  {
     readCanMessages();
     lastCanUpdateTime = currentMillis;
   }
 
   // Process GPS data
-  if (currentMillis - lastGpsUpdateTime >= GPS_UPDATE_INTERVAL) {
+  if (currentMillis - lastGpsUpdateTime >= GPS_UPDATE_INTERVAL)
+  {
     processGpsData();
     lastGpsUpdateTime = currentMillis;
   }
 
   // Send telemetry data
-  if (currentMillis - lastTelemetryTime >= TELEMETRY_INTERVAL) {
+  if (currentMillis - lastTelemetryTime >= TELEMETRY_INTERVAL)
+  {
     sendTelemetry();
     lastTelemetryTime = currentMillis;
   }
 
   // Print debug status
-  if (currentMillis - lastDebugPrintTime >= DEBUG_PRINT_INTERVAL) {
+  if (currentMillis - lastDebugPrintTime >= DEBUG_PRINT_INTERVAL)
+  {
     debugStatus();
     lastDebugPrintTime = currentMillis;
   }
 }
 
-void readCanMessages() {
+void readCanMessages()
+{
   CAN_message_t msg;
 
   // Check for messages on CAN1 (Haltect R6)
-  while (can1.read(msg)) {
+  while (can1.read(msg))
+  {
     canMessageCount++;
     canConnected = true;
 
-    switch (msg.id) {
+    switch (msg.id)
+    {
     case HALTECH_GROUP00_FRAME_ID:
       haltech_group00_unpack(&group0, msg.buf, msg.len);
       break;
@@ -198,6 +218,14 @@ void readCanMessages() {
       haltech_group24_unpack(&group24, msg.buf, msg.len);
       break;
 
+    case HALTECH_GROUP25_FRAME_ID:
+      haltech_group25_unpack(&group25, msg.buf, msg.len);
+      break;
+
+    case HALTECH_GROUP37_FRAME_ID:
+      haltech_group37_unpack(&group37, msg.buf, msg.len);
+      break;
+
     case HALTECH_GROUP39_FRAME_ID:
       haltech_group39_unpack(&group39, msg.buf, msg.len);
       break;
@@ -205,17 +233,20 @@ void readCanMessages() {
   }
 }
 
-void processGpsData() {
+void processGpsData()
+{
   // Read all available GPS data
   int bytesRead = 0;
   while (GPS_SERIAL.available() &&
-         bytesRead < 50) { // Limit to prevent blocking
+         bytesRead < 50)
+  { // Limit to prevent blocking
     gps.encode(GPS_SERIAL.read());
     bytesRead++;
   }
 }
 
-void sendTelemetry() {
+void sendTelemetry()
+{
   // Clear previous data
   telemetryDoc.clear();
 
@@ -231,7 +262,8 @@ void sendTelemetry() {
 
   // Add GPS data if valid
   telemetryDoc["gps_valid"] = gps.location.isValid();
-  if (gps.location.isValid()) {
+  if (gps.location.isValid())
+  {
     JsonObject gpsObj = telemetryDoc.createNestedObject("gps");
     gpsObj["lat"] = gps.location.lat();
     gpsObj["lng"] = gps.location.lng();
@@ -240,7 +272,8 @@ void sendTelemetry() {
     gpsObj["course"] = gps.course.deg();
     gpsObj["satellites"] = gps.satellites.value();
 
-    if (gps.date.isValid() && gps.time.isValid()) {
+    if (gps.date.isValid() && gps.time.isValid())
+    {
       char dateTime[30];
       sprintf(dateTime, "20%02d-%02d-%02dT%02d:%02d:%02dZ", gps.date.year(),
               gps.date.month(), gps.date.day(), gps.time.hour(),
@@ -250,7 +283,8 @@ void sendTelemetry() {
   }
 
   // Add engine data only if we have valid CAN data
-  if (canConnected) {
+  if (canConnected)
+  {
     JsonObject engineObj = telemetryDoc.createNestedObject("engine");
 
     // Group 0 (Engine basics)
@@ -327,11 +361,20 @@ void sendTelemetry() {
     switches["check_engine_light"] =
         haltech_group24_check_engine_light_decode(group24.check_engine_light);
 
+    // Group 25 (Steering angle)
+    engineObj["steering_angle"] =
+        haltech_group25_steering_wheel_angle_decode(group25.steering_wheel_angle);
+
+    // Group 37 (Damper travel)
+    engineObj["travel_front_left"] = haltech_group37_shock_travel_sensor_front_left_decode(group37.shock_travel_sensor_front_left);
+    engineObj["travel_rear_left"] = haltech_group37_shock_travel_sensor_rear_left_decode(group37.shock_travel_sensor_rear_left);
+    engineObj["travel_front_right"] = haltech_group37_shock_travel_sensor_front_right_decode(group37.shock_travel_sensor_front_right);
+    engineObj["travel_rear_right"] = haltech_group37_shock_travel_sensor_rear_right_decode(group37.shock_travel_sensor_rear_right);
+
     // Group 39 (Gear info)
     engineObj["gear"] = haltech_group39_gear_decode(group39.gear);
     engineObj["gear_selector_position"] =
-        haltech_group39_gear_selector_position_decode(
-            group39.gear_selector_position);
+        haltech_group39_gear_selector_position_decode(group39.gear_selector_position);
   }
 
   // Send the JSON data via radio
@@ -352,7 +395,8 @@ void sendTelemetry() {
   Serial.println(" km/h");
 }
 
-float readRegulatorVoltage() {
+float readRegulatorVoltage()
+{
   // Read analog value and convert to voltage
   int rawValue = analogRead(VOLTAGE_REG_PIN);
 
@@ -363,7 +407,8 @@ float readRegulatorVoltage() {
   return voltage;
 }
 
-void debugStatus() {
+void debugStatus()
+{
   Serial.println("\n=== System Status ===");
   Serial.print("Uptime: ");
   Serial.print(millis() / 1000);
