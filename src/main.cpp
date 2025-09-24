@@ -166,7 +166,7 @@ void setupCAN()
                         HALTECH_GROUP45_FRAME_ID);
 
   Serial.println(
-      "CAN filters configured for groups: 0, 1, 5, 8, 11, 13, 15, 20, 24, 25, 37, 39, 40");
+      "CAN filters configured for groups: 0, 1, 5, 8, 11, 13, 15, 20, 24, 25, 37, 39, 40, 45");
   Serial.println("CAN bus initialization complete");
 }
 
