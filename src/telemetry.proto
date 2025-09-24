@@ -18,11 +18,51 @@ message TemperaturePacket {
 
 message SwitchesPacket {
     bool neutral = 1;
-    bool gear_switch = 2;
-    bool clutch = 3;
-    bool oil_pressure_light = 4;
-    bool flat_shift = 5;
-    bool check_engine_light = 6;
+    bool oil_pressure_light = 2;
+    bool launch_control_active = 3;
+    bool launch_control_switch = 4;
+    bool anti_lag_switch = 5;
+    bool thermo_fan = 6;
+    float rotary_trim_pot_1 = 7;
+    float rotary_trim_pot_2 = 8;
+    float rotary_trim_pot_3 = 9;
+    bool check_engine_light = 10;
+    bool pit_lane_speed_limiter_active = 11;
+    bool pit_lane_speed_limiter_switch_state = 12;
+}
+
+message BrakesPacket {
+    float pressure_front = 1;
+    float pressure_rear = 2;
+    float pressure_front_ratio = 3;
+    float pressure_rear_ratio = 4;
+    float pressure_difference = 5;
+}
+
+message GForcePacket {
+    float lateral_g = 1;
+    float longitudinal_g = 2;
+    float vertical_g = 3;
+}
+
+message DamperPacket {
+    float travel_front_left = 1;
+    float travel_rear_left = 2;
+    float travel_front_right = 3;
+    float travel_rear_right = 4;
+}
+
+message RatePacket {
+    float pitch_rate = 1;
+    float roll_rate = 2;
+    float yaw_rate = 3;
+}
+
+message SuspensionPacket {
+    BrakesPacket brakes = 1;
+    GForcePacket gforce = 2;
+    DamperPacket damper = 3;
+    RatePacket rate = 4;
 }
 
 message EnginePacket {
@@ -41,12 +81,8 @@ message EnginePacket {
     TemperaturePacket temperature = 14;
     SwitchesPacket switches = 15;
     float steering_angle = 16;
-    float travel_front_left = 17;
-    float travel_rear_left = 18;
-    float travel_front_right = 19;
-    float travel_rear_right = 20;
-    uint32 gear = 21;
-    uint32 gear_selector_position = 22;
+    uint32 gear = 17;
+    float accelerator_pedal_position = 18;
 }
 
 message TelemetryPacket {
@@ -57,4 +93,5 @@ message TelemetryPacket {
     bool gps_valid = 5;
     GPSPacket gps = 6;
     EnginePacket engine = 7;
+    SuspensionPacket suspension = 8;
 }

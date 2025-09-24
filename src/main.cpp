@@ -41,6 +41,8 @@ const unsigned long DEBUG_PRINT_INTERVAL = 1000; // 1Hz for debugging
 struct haltech_group00_t group0;
 struct haltech_group01_t group1;
 struct haltech_group05_t group5;
+struct haltech_group08_t group8;
+struct haltech_group11_t group11;
 struct haltech_group13_t group13;
 struct haltech_group15_t group15;
 struct haltech_group20_t group20;
@@ -48,6 +50,9 @@ struct haltech_group24_t group24;
 struct haltech_group25_t group25;
 struct haltech_group37_t group37;
 struct haltech_group39_t group39;
+struct haltech_group40_t group40;
+struct haltech_group43_t group43;
+struct haltech_group45_t group45;
 
 // Debug counters
 unsigned long canMessageCount = 0;
@@ -86,6 +91,8 @@ void setup()
   memset(&group0, 0, sizeof(group0));
   memset(&group1, 0, sizeof(group1));
   memset(&group5, 0, sizeof(group5));
+  memset(&group8, 0, sizeof(group8));
+  memset(&group11, 0, sizeof(group11));
   memset(&group13, 0, sizeof(group13));
   memset(&group15, 0, sizeof(group15));
   memset(&group20, 0, sizeof(group20));
@@ -93,6 +100,9 @@ void setup()
   memset(&group25, 0, sizeof(group25));
   memset(&group37, 0, sizeof(group37));
   memset(&group39, 0, sizeof(group39));
+  memset(&group40, 0, sizeof(group40));
+  memset(&group43, 0, sizeof(group43));
+  memset(&group45, 0, sizeof(group45));
 
   Serial.println("=== System initialized and ready ===\n");
 
@@ -104,7 +114,7 @@ void setupCAN()
 {
   Serial.println("Initializing CAN bus...");
 
-  // Initialize CAN1 - Connection to Haltect R6
+  // Initialize CAN1 - Connection to Haltech ECU
   can1.begin();
   can1.setBaudRate(1000000);
   Serial.println("CAN bus set to 1Mb");
@@ -120,6 +130,11 @@ void setupCAN()
   can1.setMB(MB7, RX, STD);
   can1.setMB(MB8, RX, STD);
   can1.setMB(MB9, RX, STD);
+  can1.setMB(MB10, RX, STD);
+  can1.setMB(MB11, RX, STD);
+  can1.setMB(MB12, RX, STD);
+  can1.setMB(MB13, RX, STD);
+  can1.setMB(MB14, RX, STD);
 
   can1.setMBFilter(REJECT_ALL);
   can1.setMBFilterRange(MB0, HALTECH_GROUP00_FRAME_ID,
@@ -128,23 +143,31 @@ void setupCAN()
                         HALTECH_GROUP01_FRAME_ID);
   can1.setMBFilterRange(MB2, HALTECH_GROUP05_FRAME_ID,
                         HALTECH_GROUP05_FRAME_ID);
-  can1.setMBFilterRange(MB3, HALTECH_GROUP13_FRAME_ID,
+  can1.setMBFilterRange(MB3, HALTECH_GROUP08_FRAME_ID,
+                        HALTECH_GROUP08_FRAME_ID);
+  can1.setMBFilterRange(MB4,HALTECH_GROUP11_FRAME_ID,
+                        HALTECH_GROUP11_FRAME_ID);
+  can1.setMBFilterRange(MB5, HALTECH_GROUP13_FRAME_ID,
                         HALTECH_GROUP13_FRAME_ID);
-  can1.setMBFilterRange(MB4, HALTECH_GROUP15_FRAME_ID,
+  can1.setMBFilterRange(MB6, HALTECH_GROUP15_FRAME_ID,
                         HALTECH_GROUP15_FRAME_ID);
-  can1.setMBFilterRange(MB5, HALTECH_GROUP20_FRAME_ID,
+  can1.setMBFilterRange(MB7, HALTECH_GROUP20_FRAME_ID,
                         HALTECH_GROUP20_FRAME_ID);
-  can1.setMBFilterRange(MB6, HALTECH_GROUP24_FRAME_ID,
+  can1.setMBFilterRange(MB8, HALTECH_GROUP24_FRAME_ID,
                         HALTECH_GROUP24_FRAME_ID);
-  can1.setMBFilterRange(MB7, HALTECH_GROUP25_FRAME_ID,
+  can1.setMBFilterRange(MB9, HALTECH_GROUP25_FRAME_ID,
                         HALTECH_GROUP25_FRAME_ID);
-  can1.setMBFilterRange(MB8, HALTECH_GROUP37_FRAME_ID,
+  can1.setMBFilterRange(MB10, HALTECH_GROUP37_FRAME_ID,
                         HALTECH_GROUP37_FRAME_ID);
-  can1.setMBFilterRange(MB9, HALTECH_GROUP39_FRAME_ID,
+  can1.setMBFilterRange(MB11, HALTECH_GROUP39_FRAME_ID,
                         HALTECH_GROUP39_FRAME_ID);
+  can1.setMBFilterRange(MB12, HALTECH_GROUP40_FRAME_ID,
+                        HALTECH_GROUP40_FRAME_ID);
+  can1.setMBFilterRange(MB13, HALTECH_GROUP43_FRAME_ID,
+                        HALTECH_GROUP43_FRAME_ID);
+  can1.setMBFilterRange(MB14, HALTECH_GROUP45_FRAME_ID,
+                        HALTECH_GROUP45_FRAME_ID);
 
-  Serial.println(
-      "CAN filters configured for groups: 0, 1, 5, 13, 15, 20, 24, 25, 37, 39");
   Serial.println("CAN bus initialization complete");
 }
 
@@ -185,7 +208,7 @@ void readCanMessages()
 {
   CAN_message_t msg;
 
-  // Check for messages on CAN1 (Haltect R6)
+  // Check for messages on CAN1 (Haltect ECU)
   while (can1.read(msg))
   {
     canMessageCount++;
@@ -203,6 +226,14 @@ void readCanMessages()
 
     case HALTECH_GROUP05_FRAME_ID:
       haltech_group05_unpack(&group5, msg.buf, msg.len);
+      break;
+
+    case HALTECH_GROUP08_FRAME_ID:
+      haltech_group08_unpack(&group8, msg.buf, msg.len);
+      break;
+
+    case HALTECH_GROUP11_FRAME_ID:
+      haltech_group11_unpack(&group11, msg.buf, msg.len);
       break;
 
     case HALTECH_GROUP13_FRAME_ID:
@@ -232,6 +263,17 @@ void readCanMessages()
     case HALTECH_GROUP39_FRAME_ID:
       haltech_group39_unpack(&group39, msg.buf, msg.len);
       break;
+
+    case HALTECH_GROUP40_FRAME_ID:
+      haltech_group40_unpack(&group40, msg.buf, msg.len);
+      break;
+
+    case HALTECH_GROUP43_FRAME_ID:
+      haltech_group43_unpack(&group43, msg.buf, msg.len);
+      break;
+
+    case HALTECH_GROUP45_FRAME_ID:
+      haltech_group45_unpack(&group45, msg.buf, msg.len);
     }
   }
 }
@@ -282,6 +324,9 @@ void sendTelemetry()
     msg.has_engine = true;
     EnginePacket *eng = &msg.engine;
 
+    msg.has_suspension = true;
+    SuspensionPacket *susp = &msg.suspension;
+
     // Group 0 (Engine basics)
     eng->rpm = haltech_group00_rpm_decode(group0.rpm);
     eng->manifold_pressure = haltech_group00_manifold_pressure_decode(group0.manifold_pressure);
@@ -297,10 +342,17 @@ void sendTelemetry()
     eng->sensor_2 = haltech_group05_wideband_sensor_2_decode(group5.wideband_sensor_2);
     eng->overall = haltech_group39_wideband_overall_decode(group39.wideband_overall);
 
+    // Group 8 (Brake pressure and lateral G)
+    susp->brakes.pressure_front = haltech_group08_brake_pressure_front_decode(group8.brake_pressure_front);
+    susp->gforce.lateral_g = haltech_group08_lateral_g_decode(group8.lateral_g);
+
+    // Group 11 (Longitudinal G)
+    susp->gforce.longitudinal_g = haltech_group11_longitudinal_g_decode(group11.longitudinal_g);
+
     // Group 13 (Vehicle speed)
     eng->vehicle_speed = haltech_group13_vehicle_speed_decode(group13.vehicle_speed);
 
-    // Group 15 (Battery and boost)
+    // Group 15 (Battery and baro pressure)
     eng->battery_voltage = haltech_group15_battery_voltage_decode(group15.battery_voltage);
     eng->barometric_pressure = haltech_group15_barometric_pressure_decode(group15.barometric_pressure);
 
@@ -314,24 +366,45 @@ void sendTelemetry()
     // Group 24 (Switches and indicators)
     eng->has_switches = true;
     eng->switches.neutral = haltech_group24_neutral_switch_decode(group24.neutral_switch);
-    eng->switches.gear_switch = haltech_group24_gear_switch_decode(group24.gear_switch);
-    eng->switches.clutch = haltech_group24_clutch_switch_decode(group24.clutch_switch);
     eng->switches.oil_pressure_light = haltech_group24_oil_pressure_light_decode(group24.oil_pressure_light);
-    eng->switches.flat_shift = haltech_group24_flat_shift_switch_decode(group24.flat_shift_switch);
+    eng->switches.launch_control_active = haltech_group24_launch_control_active_decode(group24.launch_control_active);
+    eng->switches.launch_control_switch = haltech_group24_launch_control_switch_decode(group24.launch_control_switch);
+    eng->switches.anti_lag_switch = haltech_group24_anti_lag_switch_decode(group24.anti_lag_switch);
+    eng->switches.thermo_fan = haltech_group24_thermo_fan_1_on_decode(group24.thermo_fan_1_on);
+    eng->switches.rotary_trim_pot_1 = haltech_group24_rotary_trim_pot_1_decode(group24.rotary_trim_pot_1);
+    eng->switches.rotary_trim_pot_2 = haltech_group24_rotary_trim_pot_2_decode(group24.rotary_trim_pot_2);
+    eng->switches.rotary_trim_pot_3 = haltech_group24_rotary_trim_pot_3_decode(group24.rotary_trim_pot_3);
     eng->switches.check_engine_light = haltech_group24_check_engine_light_decode(group24.check_engine_light);
 
-    // Group 25 (Steering angle)
+
+    // Group 25 (Steering angle and pit lane speed limiter)
+    eng->switches.pit_lane_speed_limiter_active = haltech_group25_pit_lane_speed_limiter_active_decode(group25.pit_lane_speed_limiter_active);
+    eng->switches.pit_lane_speed_limiter_switch_state = haltech_group25_pit_lane_speed_limiter_switch_state_decode(group25.pit_lane_speed_limiter_switch_state);
     eng->steering_angle = haltech_group25_steering_wheel_angle_decode(group25.steering_wheel_angle);
 
     // Group 37 (Damper travel)
-    eng->travel_front_left = haltech_group37_shock_travel_sensor_front_left_decode(group37.shock_travel_sensor_front_left);
-    eng->travel_rear_left = haltech_group37_shock_travel_sensor_rear_left_decode(group37.shock_travel_sensor_rear_left);
-    eng->travel_front_right = haltech_group37_shock_travel_sensor_front_right_decode(group37.shock_travel_sensor_front_right);
-    eng->travel_rear_right = haltech_group37_shock_travel_sensor_rear_right_decode(group37.shock_travel_sensor_rear_right);
+    susp->damper.travel_front_left = haltech_group37_shock_travel_sensor_front_left_decode(group37.shock_travel_sensor_front_left);
+    susp->damper.travel_rear_left = haltech_group37_shock_travel_sensor_rear_left_decode(group37.shock_travel_sensor_rear_left);
+    susp->damper.travel_front_right = haltech_group37_shock_travel_sensor_front_right_decode(group37.shock_travel_sensor_front_right);
+    susp->damper.travel_rear_right = haltech_group37_shock_travel_sensor_rear_right_decode(group37.shock_travel_sensor_rear_right);
 
     // Group 39 (Gear info)
     eng->gear = haltech_group39_gear_decode(group39.gear);
-    eng->gear_selector_position = haltech_group39_gear_selector_position_decode(group39.gear_selector_position);
+
+    // Group 40 (APPS)
+    eng->accelerator_pedal_position = haltech_group40_accelerator_pedal_position_decode(group40.accelerator_pedal_position);
+
+    // Group 43 (G and roll rate)
+    susp->gforce.vertical_g = haltech_group43_vertical_g_decode(group43.vertical_g);
+    susp->rate.pitch_rate = haltech_group43_pitch_rate_decode(group43.pitch_rate);
+    susp->rate.roll_rate = haltech_group43_roll_rate_decode(group43.roll_rate);
+    susp->rate.yaw_rate = haltech_group43_yaw_rate_decode(group43.yaw_rate);
+
+    // Group 45 (Brake pressure)
+    susp->brakes.pressure_rear = haltech_group45_brake_pressure_rear_decode(group45.brake_pressure_rear);
+    susp->brakes.pressure_front_ratio = haltech_group45_brake_pressure_front_ratio_decode(group45.brake_pressure_front_ratio);
+    susp->brakes.pressure_rear_ratio = haltech_group45_brake_pressure_rear_ratio_decode(group45.brake_pressure_rear_ratio);
+    susp->brakes.pressure_difference = haltech_group45_brake_pressure_difference_decode(group45.brake_pressure_difference);
   }
 
   // Encode protobuf message
