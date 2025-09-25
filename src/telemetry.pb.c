@@ -15,10 +15,25 @@ PB_BIND(TemperaturePacket, TemperaturePacket, AUTO)
 PB_BIND(SwitchesPacket, SwitchesPacket, AUTO)
 
 
+PB_BIND(BrakesPacket, BrakesPacket, AUTO)
+
+
+PB_BIND(GForcePacket, GForcePacket, AUTO)
+
+
+PB_BIND(DamperPacket, DamperPacket, AUTO)
+
+
+PB_BIND(RatePacket, RatePacket, AUTO)
+
+
+PB_BIND(SuspensionPacket, SuspensionPacket, AUTO)
+
+
 PB_BIND(EnginePacket, EnginePacket, AUTO)
 
 
-PB_BIND(TelemetryPacket, TelemetryPacket, AUTO)
+PB_BIND(TelemetryPacket, TelemetryPacket, 2)
 
 
 
