@@ -315,7 +315,6 @@ void sendTelemetry()
     msg.gps.alt = gps.altitude.meters();
     msg.gps.speed = gps.speed.kmph();
     msg.gps.course = gps.course.deg();
-    msg.gps.satellites = gps.satellites.value();
   }
 
   // Add engine data only if we have valid CAN data
@@ -369,7 +368,6 @@ void sendTelemetry()
     eng->switches.oil_pressure_light = haltech_group24_oil_pressure_light_decode(group24.oil_pressure_light);
     eng->switches.launch_control_active = haltech_group24_launch_control_active_decode(group24.launch_control_active);
     eng->switches.launch_control_switch = haltech_group24_launch_control_switch_decode(group24.launch_control_switch);
-    // TODO: remove antilag switch stuff from other places
     eng->switches.thermo_fan = haltech_group24_thermo_fan_1_on_decode(group24.thermo_fan_1_on);
     eng->switches.rotary_trim_pot_1 = haltech_group24_rotary_trim_pot_1_decode(group24.rotary_trim_pot_1);
     eng->switches.rotary_trim_pot_2 = haltech_group24_rotary_trim_pot_2_decode(group24.rotary_trim_pot_2);

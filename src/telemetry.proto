@@ -6,7 +6,6 @@ message GPSPacket {
     double alt = 3;
     double speed = 4;
     double course = 5;
-    uint32 satellites = 6;
 }
 
 message TemperaturePacket {
@@ -21,14 +20,13 @@ message SwitchesPacket {
     bool oil_pressure_light = 2;
     bool launch_control_active = 3;
     bool launch_control_switch = 4;
-    bool anti_lag_switch = 5;
-    bool thermo_fan = 6;
-    float rotary_trim_pot_1 = 7;
-    float rotary_trim_pot_2 = 8;
-    float rotary_trim_pot_3 = 9;
-    bool check_engine_light = 10;
-    bool pit_lane_speed_limiter_active = 11;
-    bool pit_lane_speed_limiter_switch_state = 12;
+    bool thermo_fan = 5;
+    float rotary_trim_pot_1 = 6;
+    float rotary_trim_pot_2 = 7;
+    float rotary_trim_pot_3 = 8;
+    bool check_engine_light = 9;
+    bool pit_lane_speed_limiter_active = 10;
+    bool pit_lane_speed_limiter_switch_state = 11;
 }
 
 message BrakesPacket {
