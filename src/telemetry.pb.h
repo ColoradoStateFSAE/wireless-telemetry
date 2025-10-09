@@ -16,7 +16,6 @@ typedef struct _GPSPacket {
     double alt;
     double speed;
     double course;
-    uint32_t satellites;
 } GPSPacket;
 
 typedef struct _TemperaturePacket {
@@ -31,7 +30,6 @@ typedef struct _SwitchesPacket {
     bool oil_pressure_light;
     bool launch_control_active;
     bool launch_control_switch;
-    bool anti_lag_switch;
     bool thermo_fan;
     float rotary_trim_pot_1;
     float rotary_trim_pot_2;
@@ -121,9 +119,9 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define GPSPacket_init_default                   {0, 0, 0, 0, 0, 0}
+#define GPSPacket_init_default                   {0, 0, 0, 0, 0}
 #define TemperaturePacket_init_default           {0, 0, 0, 0}
-#define SwitchesPacket_init_default              {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define SwitchesPacket_init_default              {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define BrakesPacket_init_default                {0, 0, 0, 0, 0}
 #define GForcePacket_init_default                {0, 0, 0}
 #define DamperPacket_init_default                {0, 0, 0, 0}
@@ -131,9 +129,9 @@ extern "C" {
 #define SuspensionPacket_init_default            {false, BrakesPacket_init_default, false, GForcePacket_init_default, false, DamperPacket_init_default, false, RatePacket_init_default}
 #define EnginePacket_init_default                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, false, TemperaturePacket_init_default, false, SwitchesPacket_init_default, 0, 0, 0}
 #define TelemetryPacket_init_default             {0, 0, 0, 0, 0, false, GPSPacket_init_default, false, EnginePacket_init_default, false, SuspensionPacket_init_default}
-#define GPSPacket_init_zero                      {0, 0, 0, 0, 0, 0}
+#define GPSPacket_init_zero                      {0, 0, 0, 0, 0}
 #define TemperaturePacket_init_zero              {0, 0, 0, 0}
-#define SwitchesPacket_init_zero                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define SwitchesPacket_init_zero                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define BrakesPacket_init_zero                   {0, 0, 0, 0, 0}
 #define GForcePacket_init_zero                   {0, 0, 0}
 #define DamperPacket_init_zero                   {0, 0, 0, 0}
@@ -148,7 +146,6 @@ extern "C" {
 #define GPSPacket_alt_tag                        3
 #define GPSPacket_speed_tag                      4
 #define GPSPacket_course_tag                     5
-#define GPSPacket_satellites_tag                 6
 #define TemperaturePacket_coolant_tag            1
 #define TemperaturePacket_air_tag                2
 #define TemperaturePacket_fuel_tag               3
@@ -157,14 +154,13 @@ extern "C" {
 #define SwitchesPacket_oil_pressure_light_tag    2
 #define SwitchesPacket_launch_control_active_tag 3
 #define SwitchesPacket_launch_control_switch_tag 4
-#define SwitchesPacket_anti_lag_switch_tag       5
-#define SwitchesPacket_thermo_fan_tag            6
-#define SwitchesPacket_rotary_trim_pot_1_tag     7
-#define SwitchesPacket_rotary_trim_pot_2_tag     8
-#define SwitchesPacket_rotary_trim_pot_3_tag     9
-#define SwitchesPacket_check_engine_light_tag    10
-#define SwitchesPacket_pit_lane_speed_limiter_active_tag 11
-#define SwitchesPacket_pit_lane_speed_limiter_switch_state_tag 12
+#define SwitchesPacket_thermo_fan_tag            5
+#define SwitchesPacket_rotary_trim_pot_1_tag     6
+#define SwitchesPacket_rotary_trim_pot_2_tag     7
+#define SwitchesPacket_rotary_trim_pot_3_tag     8
+#define SwitchesPacket_check_engine_light_tag    9
+#define SwitchesPacket_pit_lane_speed_limiter_active_tag 10
+#define SwitchesPacket_pit_lane_speed_limiter_switch_state_tag 11
 #define BrakesPacket_pressure_front_tag          1
 #define BrakesPacket_pressure_rear_tag           2
 #define BrakesPacket_pressure_front_ratio_tag    3
@@ -216,8 +212,7 @@ X(a, STATIC,   SINGULAR, DOUBLE,   lat,               1) \
 X(a, STATIC,   SINGULAR, DOUBLE,   lng,               2) \
 X(a, STATIC,   SINGULAR, DOUBLE,   alt,               3) \
 X(a, STATIC,   SINGULAR, DOUBLE,   speed,             4) \
-X(a, STATIC,   SINGULAR, DOUBLE,   course,            5) \
-X(a, STATIC,   SINGULAR, UINT32,   satellites,        6)
+X(a, STATIC,   SINGULAR, DOUBLE,   course,            5)
 #define GPSPacket_CALLBACK NULL
 #define GPSPacket_DEFAULT NULL
 
@@ -234,14 +229,13 @@ X(a, STATIC,   SINGULAR, BOOL,     neutral,           1) \
 X(a, STATIC,   SINGULAR, BOOL,     oil_pressure_light,   2) \
 X(a, STATIC,   SINGULAR, BOOL,     launch_control_active,   3) \
 X(a, STATIC,   SINGULAR, BOOL,     launch_control_switch,   4) \
-X(a, STATIC,   SINGULAR, BOOL,     anti_lag_switch,   5) \
-X(a, STATIC,   SINGULAR, BOOL,     thermo_fan,        6) \
-X(a, STATIC,   SINGULAR, FLOAT,    rotary_trim_pot_1,   7) \
-X(a, STATIC,   SINGULAR, FLOAT,    rotary_trim_pot_2,   8) \
-X(a, STATIC,   SINGULAR, FLOAT,    rotary_trim_pot_3,   9) \
-X(a, STATIC,   SINGULAR, BOOL,     check_engine_light,  10) \
-X(a, STATIC,   SINGULAR, BOOL,     pit_lane_speed_limiter_active,  11) \
-X(a, STATIC,   SINGULAR, BOOL,     pit_lane_speed_limiter_switch_state,  12)
+X(a, STATIC,   SINGULAR, BOOL,     thermo_fan,        5) \
+X(a, STATIC,   SINGULAR, FLOAT,    rotary_trim_pot_1,   6) \
+X(a, STATIC,   SINGULAR, FLOAT,    rotary_trim_pot_2,   7) \
+X(a, STATIC,   SINGULAR, FLOAT,    rotary_trim_pot_3,   8) \
+X(a, STATIC,   SINGULAR, BOOL,     check_engine_light,   9) \
+X(a, STATIC,   SINGULAR, BOOL,     pit_lane_speed_limiter_active,  10) \
+X(a, STATIC,   SINGULAR, BOOL,     pit_lane_speed_limiter_switch_state,  11)
 #define SwitchesPacket_CALLBACK NULL
 #define SwitchesPacket_DEFAULT NULL
 
@@ -352,14 +346,14 @@ extern const pb_msgdesc_t TelemetryPacket_msg;
 /* Maximum encoded size of messages (where known) */
 #define BrakesPacket_size                        25
 #define DamperPacket_size                        20
-#define EnginePacket_size                        137
+#define EnginePacket_size                        135
 #define GForcePacket_size                        15
-#define GPSPacket_size                           51
+#define GPSPacket_size                           45
 #define RatePacket_size                          15
 #define SuspensionPacket_size                    83
-#define SwitchesPacket_size                      33
+#define SwitchesPacket_size                      31
 #define TELEMETRY_PB_H_MAX_SIZE                  TelemetryPacket_size
-#define TelemetryPacket_size                     299
+#define TelemetryPacket_size                     291
 #define TemperaturePacket_size                   20
 
 #ifdef __cplusplus
