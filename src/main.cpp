@@ -32,10 +32,10 @@ unsigned long lastTelemetryTime = 0;
 unsigned long lastDebugPrintTime = 0;
 
 // Update intervals (milliseconds)
-const unsigned long CAN_UPDATE_INTERVAL = 10;    // 100Hz
-const unsigned long GPS_UPDATE_INTERVAL = 100;   // 10Hz
-const unsigned long TELEMETRY_INTERVAL = 500;    // 10Hz
-const unsigned long DEBUG_PRINT_INTERVAL = 1000; // 1Hz for debugging
+const unsigned long CAN_UPDATE_INTERVAL = 10;     // 100Hz
+const unsigned long GPS_UPDATE_INTERVAL = 100;    // 10Hz
+const unsigned long TELEMETRY_INTERVAL = 500; // 2Hz
+const unsigned long DEBUG_PRINT_INTERVAL = 1000;  // 1Hz for debugging
 
 // Storage for CAN message structures
 struct haltech_group00_t group0;
@@ -369,7 +369,7 @@ void sendTelemetry()
     eng->switches.oil_pressure_light = haltech_group24_oil_pressure_light_decode(group24.oil_pressure_light);
     eng->switches.launch_control_active = haltech_group24_launch_control_active_decode(group24.launch_control_active);
     eng->switches.launch_control_switch = haltech_group24_launch_control_switch_decode(group24.launch_control_switch);
-    eng->switches.anti_lag_switch = haltech_group24_anti_lag_switch_decode(group24.anti_lag_switch);
+    // TODO: remove antilag switch stuff from other places
     eng->switches.thermo_fan = haltech_group24_thermo_fan_1_on_decode(group24.thermo_fan_1_on);
     eng->switches.rotary_trim_pot_1 = haltech_group24_rotary_trim_pot_1_decode(group24.rotary_trim_pot_1);
     eng->switches.rotary_trim_pot_2 = haltech_group24_rotary_trim_pot_2_decode(group24.rotary_trim_pot_2);
@@ -414,7 +414,8 @@ void sendTelemetry()
   if (status) {
     // Send the protobuf data via radio
     RADIO_SERIAL.write(protobuf_buffer, stream.bytes_written);
-    RADIO_SERIAL.println(); // Add newline for easier parsing
+    RADIO_SERIAL.print("~");
+    // RADIO_SERIAL.println(); // Add newline for easier parsing
   } else {
     Serial.println("Protobuf encoding failed");
   }
