@@ -434,24 +434,11 @@ float readRegulatorVoltage()
 void debugStatus()
 {
   Serial.println("\n=== System Status ===");
-  Serial.print("Uptime: ");
-  Serial.print(millis() / 1000);
-  Serial.println(" seconds");
-
-  Serial.print("CAN Status: ");
-  Serial.println(canConnected ? "Connected" : "Disconnected");
-
-  Serial.print("CAN Messages Received: ");
-  Serial.println(canMessageCount);
-
-  Serial.print("Telemetry Packets Sent: ");
-  Serial.println(telemetrySentCount);
-
-  Serial.print("System Voltage: ");
-  Serial.print(readRegulatorVoltage());
-  Serial.println("V");
-
-  Serial.print("GPS Status: ");
-  Serial.println(gps.location.isValid() ? "Valid" : "Searching");
-  Serial.println("====================\n");
+  Serial.printf("Uptime: %d seconds\n", millis() / 1000);
+  Serial.printf("CAN Status: %s\n", canConnected ? "Connected" : "Disconnected");
+  Serial.printf("CAN Messages Received: %d\n", canMessageCount);
+  Serial.printf("Telemetry Packets Sent: %d\n", telemetrySentCount);
+  Serial.printf("System Voltage: %fV\n", readRegulatorVoltage());
+  Serial.printf("GPS Status: %s\n", GPS_SERIAL.available() ? "Interface unavailable" : gps.location.isValid() ? "Valid" : "Searching...");
+  Serial.println("=======================\n");
 }
