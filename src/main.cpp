@@ -122,44 +122,31 @@ void setup()
 
 void setupCAN()
 {
-  // TODO: set up filters!
-  // the issue here is that the new chip can only have six filters, where the previous
-  // one allowed up to sixteen. this means we either have to find a way to combine filters
-  // or just accept that we will be receiving more messages than we need, which might
-  // slow down processing
+  // NOTE: Since we don't have enough filters to cover each group, we need to split them up.
+  // Since all of the groups we want live between 0x360u and 0x476u, we can just filter for
+  // everything that starts with 0x3 & 0x4.
 
-  // --------- OLD FILTERS ---------
-  // can1.setMBFilter(REJECT_ALL);
-  // can1.setMBFilterRange(MB0, HALTECH_GROUP00_FRAME_ID,
-  //                       HALTECH_GROUP00_FRAME_ID);
-  // can1.setMBFilterRange(MB1, HALTECH_GROUP01_FRAME_ID,
-  //                       HALTECH_GROUP01_FRAME_ID);
-  // can1.setMBFilterRange(MB2, HALTECH_GROUP05_FRAME_ID,
-  //                       HALTECH_GROUP05_FRAME_ID);
-  // can1.setMBFilterRange(MB3, HALTECH_GROUP08_FRAME_ID,
-  //                       HALTECH_GROUP08_FRAME_ID);
-  // can1.setMBFilterRange(MB4,HALTECH_GROUP11_FRAME_ID,
-  //                       HALTECH_GROUP11_FRAME_ID);
-  // can1.setMBFilterRange(MB5, HALTECH_GROUP13_FRAME_ID,
-  //                       HALTECH_GROUP13_FRAME_ID);
-  // can1.setMBFilterRange(MB6, HALTECH_GROUP15_FRAME_ID,
-  //                       HALTECH_GROUP15_FRAME_ID);
-  // can1.setMBFilterRange(MB7, HALTECH_GROUP20_FRAME_ID,
-  //                       HALTECH_GROUP20_FRAME_ID);
-  // can1.setMBFilterRange(MB8, HALTECH_GROUP24_FRAME_ID,
-  //                       HALTECH_GROUP24_FRAME_ID);
-  // can1.setMBFilterRange(MB9, HALTECH_GROUP25_FRAME_ID,
-  //                       HALTECH_GROUP25_FRAME_ID);
-  // can1.setMBFilterRange(MB10, HALTECH_GROUP37_FRAME_ID,
-  //                       HALTECH_GROUP37_FRAME_ID);
-  // can1.setMBFilterRange(MB11, HALTECH_GROUP39_FRAME_ID,
-  //                       HALTECH_GROUP39_FRAME_ID);
-  // can1.setMBFilterRange(MB12, HALTECH_GROUP40_FRAME_ID,
-  //                       HALTECH_GROUP40_FRAME_ID);
-  // can1.setMBFilterRange(MB13, HALTECH_GROUP43_FRAME_ID,
-  //                       HALTECH_GROUP43_FRAME_ID);
-  // can1.setMBFilterRange(MB14, HALTECH_GROUP45_FRAME_ID,
-  //                       HALTECH_GROUP45_FRAME_ID);
+  // Start config mode
+  can->setConfigMode();
+
+  // One mask for both receive buffers
+  can->setFilterMask(MCP2515::MASK0, false, 0x700);
+  can->setFilterMask(MCP2515::MASK1, false, 0x700);
+
+  // Filter 0 → 0x300–0x3FF
+  can->setFilter(MCP2515::RXF0, false, 0x300);
+
+  // Filter 1 → 0x400–0x4FF
+  can->setFilter(MCP2515::RXF1, false, 0x400);
+
+  // You can reuse the same mask for the rest if you want:
+  can->setFilter(MCP2515::RXF2, false, 0x300);
+  can->setFilter(MCP2515::RXF3, false, 0x400);
+  can->setFilter(MCP2515::RXF4, false, 0x300);
+  can->setFilter(MCP2515::RXF5, false, 0x400);
+
+  // Return to normal mode
+  can->setNormalMode();
 }
 
 void loop()
@@ -197,7 +184,7 @@ void loop()
 
 void readCanMessages()
 {
-    struct can_frame msg;
+  struct can_frame msg;
 
   // Check for messages on CAN1 (Haltect ECU)
   while (can->readMessage(&msg) == MCP2515::ERROR_OK)
