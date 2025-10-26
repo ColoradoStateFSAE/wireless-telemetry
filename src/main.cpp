@@ -182,6 +182,9 @@ void loop()
   }
 }
 
+/**
+ * @brief Pulls all CAN messages and stores them in their respective groups.
+ */
 void readCanMessages()
 {
   struct can_frame msg;
@@ -256,6 +259,9 @@ void readCanMessages()
   }
 }
 
+/**
+ * @brief Pulls GPS data and encodes it into the GPS buffer.
+ */
 void processGpsData()
 {
   // Read all available GPS data
@@ -268,6 +274,9 @@ void processGpsData()
   }
 }
 
+/**
+ * @brief Reads data from groups and transmits it over radio serial.
+ */
 void sendTelemetry()
 {
   // Clear previous data
