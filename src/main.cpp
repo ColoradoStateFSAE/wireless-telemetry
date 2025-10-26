@@ -403,14 +403,13 @@ void sendTelemetry()
   {
     // Send the protobuf data via radio
     RADIO_SERIAL.write(protobuf_buffer, stream.bytes_written);
-    RADIO_SERIAL.print("~");
+    RADIO_SERIAL.print("~!");
+    telemetrySentCount++;
   }
   else
   {
     Serial.println("Protobuf encoding failed");
   }
-
-  telemetrySentCount++;
 
   // Also print basic info to Serial for debugging
   Serial.print("Telemetry #");
