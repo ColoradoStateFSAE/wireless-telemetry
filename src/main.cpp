@@ -1,7 +1,8 @@
 #include <Arduino.h>
-#include <FlexCAN_T4.h>
+#include <mcp2515.h>
 #include <TinyGPS++.h>
 #include <pb_encode.h>
+#include <optional>
 
 // Include the DBC-generated header
 #include "haltech.h"
@@ -9,8 +10,8 @@
 // Include Protobuf header
 #include "./telemetry.pb.h"
 
-// CAN bus setup for Teensy 4.1
-FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1; // Connected to Haltect ECU
+// Can bus
+std::optional<MCP2515> can;
 
 // GPS setup
 TinyGPSPlus gps;
@@ -32,10 +33,10 @@ unsigned long lastTelemetryTime = 0;
 unsigned long lastDebugPrintTime = 0;
 
 // Update intervals (milliseconds)
-const unsigned long CAN_UPDATE_INTERVAL = 10;     // 100Hz
-const unsigned long GPS_UPDATE_INTERVAL = 100;    // 10Hz
-const unsigned long TELEMETRY_INTERVAL = 500; // 2Hz
-const unsigned long DEBUG_PRINT_INTERVAL = 1000;  // 1Hz for debugging
+const unsigned long CAN_UPDATE_INTERVAL = 10;    // 100Hz
+const unsigned long GPS_UPDATE_INTERVAL = 100;   // 10Hz
+const unsigned long TELEMETRY_INTERVAL = 500;    // 2Hz
+const unsigned long DEBUG_PRINT_INTERVAL = 1000; // 1Hz for debugging
 
 // Storage for CAN message structures
 struct haltech_group00_t group0;
@@ -85,7 +86,16 @@ void setup()
   pinMode(VOLTAGE_REG_PIN, INPUT);
   Serial.println("Voltage regulator pin configured");
 
-  setupCAN();
+  // Set SPI settings
+  SPI1.setSCK(10);
+  SPI1.setMISO(12);
+  SPI1.setMOSI(11);
+  SPI1.begin();
+
+  // Initialize CAN1 connection
+  can.emplace(MCP2515(9, 10000000, &SPI1));
+  can->setBitrate(CAN_1000KBPS, MCP_8MHZ);
+  can->setNormalMode();
 
   // Initialize data structures to zero
   memset(&group0, 0, sizeof(group0));
@@ -112,63 +122,44 @@ void setup()
 
 void setupCAN()
 {
-  Serial.println("Initializing CAN bus...");
+  // TODO: set up filters!
+  // the issue here is that the new chip can only have six filters, where the previous
+  // one allowed up to sixteen. this means we either have to find a way to combine filters
+  // or just accept that we will be receiving more messages than we need, which might
+  // slow down processing
 
-  // Initialize CAN1 - Connection to Haltech ECU
-  can1.begin();
-  can1.setBaudRate(1000000);
-  Serial.println("CAN bus set to 1Mb");
-
-  // Set up basic filters for important message IDs
-  can1.setMB(MB0, RX, STD);
-  can1.setMB(MB1, RX, STD);
-  can1.setMB(MB2, RX, STD);
-  can1.setMB(MB3, RX, STD);
-  can1.setMB(MB4, RX, STD);
-  can1.setMB(MB5, RX, STD);
-  can1.setMB(MB6, RX, STD);
-  can1.setMB(MB7, RX, STD);
-  can1.setMB(MB8, RX, STD);
-  can1.setMB(MB9, RX, STD);
-  can1.setMB(MB10, RX, STD);
-  can1.setMB(MB11, RX, STD);
-  can1.setMB(MB12, RX, STD);
-  can1.setMB(MB13, RX, STD);
-  can1.setMB(MB14, RX, STD);
-
-  can1.setMBFilter(REJECT_ALL);
-  can1.setMBFilterRange(MB0, HALTECH_GROUP00_FRAME_ID,
-                        HALTECH_GROUP00_FRAME_ID);
-  can1.setMBFilterRange(MB1, HALTECH_GROUP01_FRAME_ID,
-                        HALTECH_GROUP01_FRAME_ID);
-  can1.setMBFilterRange(MB2, HALTECH_GROUP05_FRAME_ID,
-                        HALTECH_GROUP05_FRAME_ID);
-  can1.setMBFilterRange(MB3, HALTECH_GROUP08_FRAME_ID,
-                        HALTECH_GROUP08_FRAME_ID);
-  can1.setMBFilterRange(MB4,HALTECH_GROUP11_FRAME_ID,
-                        HALTECH_GROUP11_FRAME_ID);
-  can1.setMBFilterRange(MB5, HALTECH_GROUP13_FRAME_ID,
-                        HALTECH_GROUP13_FRAME_ID);
-  can1.setMBFilterRange(MB6, HALTECH_GROUP15_FRAME_ID,
-                        HALTECH_GROUP15_FRAME_ID);
-  can1.setMBFilterRange(MB7, HALTECH_GROUP20_FRAME_ID,
-                        HALTECH_GROUP20_FRAME_ID);
-  can1.setMBFilterRange(MB8, HALTECH_GROUP24_FRAME_ID,
-                        HALTECH_GROUP24_FRAME_ID);
-  can1.setMBFilterRange(MB9, HALTECH_GROUP25_FRAME_ID,
-                        HALTECH_GROUP25_FRAME_ID);
-  can1.setMBFilterRange(MB10, HALTECH_GROUP37_FRAME_ID,
-                        HALTECH_GROUP37_FRAME_ID);
-  can1.setMBFilterRange(MB11, HALTECH_GROUP39_FRAME_ID,
-                        HALTECH_GROUP39_FRAME_ID);
-  can1.setMBFilterRange(MB12, HALTECH_GROUP40_FRAME_ID,
-                        HALTECH_GROUP40_FRAME_ID);
-  can1.setMBFilterRange(MB13, HALTECH_GROUP43_FRAME_ID,
-                        HALTECH_GROUP43_FRAME_ID);
-  can1.setMBFilterRange(MB14, HALTECH_GROUP45_FRAME_ID,
-                        HALTECH_GROUP45_FRAME_ID);
-
-  Serial.println("CAN bus initialization complete");
+  // --------- OLD FILTERS ---------
+  // can1.setMBFilter(REJECT_ALL);
+  // can1.setMBFilterRange(MB0, HALTECH_GROUP00_FRAME_ID,
+  //                       HALTECH_GROUP00_FRAME_ID);
+  // can1.setMBFilterRange(MB1, HALTECH_GROUP01_FRAME_ID,
+  //                       HALTECH_GROUP01_FRAME_ID);
+  // can1.setMBFilterRange(MB2, HALTECH_GROUP05_FRAME_ID,
+  //                       HALTECH_GROUP05_FRAME_ID);
+  // can1.setMBFilterRange(MB3, HALTECH_GROUP08_FRAME_ID,
+  //                       HALTECH_GROUP08_FRAME_ID);
+  // can1.setMBFilterRange(MB4,HALTECH_GROUP11_FRAME_ID,
+  //                       HALTECH_GROUP11_FRAME_ID);
+  // can1.setMBFilterRange(MB5, HALTECH_GROUP13_FRAME_ID,
+  //                       HALTECH_GROUP13_FRAME_ID);
+  // can1.setMBFilterRange(MB6, HALTECH_GROUP15_FRAME_ID,
+  //                       HALTECH_GROUP15_FRAME_ID);
+  // can1.setMBFilterRange(MB7, HALTECH_GROUP20_FRAME_ID,
+  //                       HALTECH_GROUP20_FRAME_ID);
+  // can1.setMBFilterRange(MB8, HALTECH_GROUP24_FRAME_ID,
+  //                       HALTECH_GROUP24_FRAME_ID);
+  // can1.setMBFilterRange(MB9, HALTECH_GROUP25_FRAME_ID,
+  //                       HALTECH_GROUP25_FRAME_ID);
+  // can1.setMBFilterRange(MB10, HALTECH_GROUP37_FRAME_ID,
+  //                       HALTECH_GROUP37_FRAME_ID);
+  // can1.setMBFilterRange(MB11, HALTECH_GROUP39_FRAME_ID,
+  //                       HALTECH_GROUP39_FRAME_ID);
+  // can1.setMBFilterRange(MB12, HALTECH_GROUP40_FRAME_ID,
+  //                       HALTECH_GROUP40_FRAME_ID);
+  // can1.setMBFilterRange(MB13, HALTECH_GROUP43_FRAME_ID,
+  //                       HALTECH_GROUP43_FRAME_ID);
+  // can1.setMBFilterRange(MB14, HALTECH_GROUP45_FRAME_ID,
+  //                       HALTECH_GROUP45_FRAME_ID);
 }
 
 void loop()
@@ -206,74 +197,74 @@ void loop()
 
 void readCanMessages()
 {
-  CAN_message_t msg;
+    struct can_frame msg;
 
   // Check for messages on CAN1 (Haltect ECU)
-  while (can1.read(msg))
+  while (can->readMessage(&msg) == MCP2515::ERROR_OK)
   {
     canMessageCount++;
     canConnected = true;
 
-    switch (msg.id)
+    switch (msg.can_id)
     {
     case HALTECH_GROUP00_FRAME_ID:
-      haltech_group00_unpack(&group0, msg.buf, msg.len);
+      haltech_group00_unpack(&group0, msg.data, msg.can_dlc);
       break;
 
     case HALTECH_GROUP01_FRAME_ID:
-      haltech_group01_unpack(&group1, msg.buf, msg.len);
+      haltech_group01_unpack(&group1, msg.data, msg.can_dlc);
       break;
 
     case HALTECH_GROUP05_FRAME_ID:
-      haltech_group05_unpack(&group5, msg.buf, msg.len);
+      haltech_group05_unpack(&group5, msg.data, msg.can_dlc);
       break;
 
     case HALTECH_GROUP08_FRAME_ID:
-      haltech_group08_unpack(&group8, msg.buf, msg.len);
+      haltech_group08_unpack(&group8, msg.data, msg.can_dlc);
       break;
 
     case HALTECH_GROUP11_FRAME_ID:
-      haltech_group11_unpack(&group11, msg.buf, msg.len);
+      haltech_group11_unpack(&group11, msg.data, msg.can_dlc);
       break;
 
     case HALTECH_GROUP13_FRAME_ID:
-      haltech_group13_unpack(&group13, msg.buf, msg.len);
+      haltech_group13_unpack(&group13, msg.data, msg.can_dlc);
       break;
 
     case HALTECH_GROUP15_FRAME_ID:
-      haltech_group15_unpack(&group15, msg.buf, msg.len);
+      haltech_group15_unpack(&group15, msg.data, msg.can_dlc);
       break;
 
     case HALTECH_GROUP20_FRAME_ID:
-      haltech_group20_unpack(&group20, msg.buf, msg.len);
+      haltech_group20_unpack(&group20, msg.data, msg.can_dlc);
       break;
 
     case HALTECH_GROUP24_FRAME_ID:
-      haltech_group24_unpack(&group24, msg.buf, msg.len);
+      haltech_group24_unpack(&group24, msg.data, msg.can_dlc);
       break;
 
     case HALTECH_GROUP25_FRAME_ID:
-      haltech_group25_unpack(&group25, msg.buf, msg.len);
+      haltech_group25_unpack(&group25, msg.data, msg.can_dlc);
       break;
 
     case HALTECH_GROUP37_FRAME_ID:
-      haltech_group37_unpack(&group37, msg.buf, msg.len);
+      haltech_group37_unpack(&group37, msg.data, msg.can_dlc);
       break;
 
     case HALTECH_GROUP39_FRAME_ID:
-      haltech_group39_unpack(&group39, msg.buf, msg.len);
+      haltech_group39_unpack(&group39, msg.data, msg.can_dlc);
       break;
 
     case HALTECH_GROUP40_FRAME_ID:
-      haltech_group40_unpack(&group40, msg.buf, msg.len);
+      haltech_group40_unpack(&group40, msg.data, msg.can_dlc);
       break;
 
     case HALTECH_GROUP43_FRAME_ID:
-      haltech_group43_unpack(&group43, msg.buf, msg.len);
+      haltech_group43_unpack(&group43, msg.data, msg.can_dlc);
       break;
 
     case HALTECH_GROUP45_FRAME_ID:
-      haltech_group45_unpack(&group45, msg.buf, msg.len);
+      haltech_group45_unpack(&group45, msg.data, msg.can_dlc);
     }
   }
 }
@@ -374,7 +365,6 @@ void sendTelemetry()
     eng->switches.rotary_trim_pot_3 = haltech_group24_rotary_trim_pot_3_decode(group24.rotary_trim_pot_3);
     eng->switches.check_engine_light = haltech_group24_check_engine_light_decode(group24.check_engine_light);
 
-
     // Group 25 (Steering angle and pit lane speed limiter)
     eng->switches.pit_lane_speed_limiter_active = haltech_group25_pit_lane_speed_limiter_active_decode(group25.pit_lane_speed_limiter_active);
     eng->switches.pit_lane_speed_limiter_switch_state = haltech_group25_pit_lane_speed_limiter_switch_state_decode(group25.pit_lane_speed_limiter_switch_state);
@@ -409,12 +399,14 @@ void sendTelemetry()
   pb_ostream_t stream = pb_ostream_from_buffer(protobuf_buffer, sizeof(protobuf_buffer));
   bool status = pb_encode(&stream, TelemetryPacket_fields, &msg);
 
-  if (status) {
+  if (status)
+  {
     // Send the protobuf data via radio
     RADIO_SERIAL.write(protobuf_buffer, stream.bytes_written);
     RADIO_SERIAL.print("~");
-    // RADIO_SERIAL.println(); // Add newline for easier parsing
-  } else {
+  }
+  else
+  {
     Serial.println("Protobuf encoding failed");
   }
 
