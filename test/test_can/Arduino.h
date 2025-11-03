@@ -31,21 +31,41 @@ int digitalRead(int pin);
 int analogRead(int pin);
 void analogWrite(int pin, int value);
 
+// Mock Stream base class (needed for Arduino compatibility)
+class Stream {
+public:
+    virtual ~Stream() = default;
+    virtual int available() = 0;
+    virtual int read() = 0;
+    virtual size_t write(uint8_t byte) = 0;
+    virtual size_t write(const uint8_t *buffer, size_t size) = 0;
+    virtual size_t print(const char *str) = 0;
+    virtual size_t print(int val) = 0;
+    virtual size_t print(unsigned long val) = 0;
+    virtual size_t print(float val) = 0;
+    virtual size_t print(double val) = 0;
+    virtual size_t println(const char *str) = 0;
+    virtual size_t println(int val) = 0;
+    virtual size_t println() = 0;
+};
+
 // Mock Serial class
-class MockSerial {
+class MockSerial : public Stream {
 public:
     void begin(unsigned long baud);
     void end();
-    int available();
-    int read();
-    size_t write(uint8_t byte);
-    size_t write(const uint8_t *buffer, size_t size);
-    size_t print(const char *str);
-    size_t print(int val);
-    size_t print(float val);
-    size_t println(const char *str);
-    size_t println(int val);
-    size_t println();
+    int available() override;
+    int read() override;
+    size_t write(uint8_t byte) override;
+    size_t write(const uint8_t *buffer, size_t size) override;
+    size_t print(const char *str) override;
+    size_t print(int val) override;
+    size_t print(unsigned long val) override;
+    size_t print(float val) override;
+    size_t print(double val) override;
+    size_t println(const char *str) override;
+    size_t println(int val) override;
+    size_t println() override;
     size_t printf(const char *format, ...);
 
     // Test helpers

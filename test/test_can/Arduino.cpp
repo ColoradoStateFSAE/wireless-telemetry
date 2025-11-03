@@ -79,7 +79,19 @@ size_t MockSerial::print(int val) {
     return print(buf);
 }
 
+size_t MockSerial::print(unsigned long val) {
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%lu", val);
+    return print(buf);
+}
+
 size_t MockSerial::print(float val) {
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%f", val);
+    return print(buf);
+}
+
+size_t MockSerial::print(double val) {
     char buf[32];
     snprintf(buf, sizeof(buf), "%f", val);
     return print(buf);

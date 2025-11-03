@@ -2,108 +2,7 @@
 #include "Arduino.h"
 #include "mcp2515.h"
 #include "haltech.h"
-
-/**
- * This test suite verifies that CAN messages are correctly read and unpacked
- * into the haltech storage groups, mimicking the readCanMessages() function
- * from main.cpp.
- */
-
-// Mock the global storage groups and counters like in main.cpp
-struct haltech_group00_t group0;
-struct haltech_group01_t group1;
-struct haltech_group05_t group5;
-struct haltech_group08_t group8;
-struct haltech_group11_t group11;
-struct haltech_group13_t group13;
-struct haltech_group15_t group15;
-struct haltech_group20_t group20;
-struct haltech_group24_t group24;
-struct haltech_group25_t group25;
-struct haltech_group37_t group37;
-struct haltech_group39_t group39;
-struct haltech_group40_t group40;
-struct haltech_group43_t group43;
-struct haltech_group45_t group45;
-
-unsigned long canMessageCount = 0;
-boolean canConnected = false;
-
-// Simulates the readCanMessages() function from main.cpp
-void readCanMessages(MCP2515* can)
-{
-  struct can_frame msg;
-
-  // Check for messages (mimics the actual function)
-  while (can->readMessage(&msg) == MCP2515::ERROR_OK)
-  {
-    canMessageCount++;
-    canConnected = true;
-
-    switch (msg.can_id)
-    {
-    case HALTECH_GROUP00_FRAME_ID:
-      haltech_group00_unpack(&group0, msg.data, msg.can_dlc);
-      break;
-
-    case HALTECH_GROUP01_FRAME_ID:
-      haltech_group01_unpack(&group1, msg.data, msg.can_dlc);
-      break;
-
-    case HALTECH_GROUP05_FRAME_ID:
-      haltech_group05_unpack(&group5, msg.data, msg.can_dlc);
-      break;
-
-    case HALTECH_GROUP08_FRAME_ID:
-      haltech_group08_unpack(&group8, msg.data, msg.can_dlc);
-      break;
-
-    case HALTECH_GROUP11_FRAME_ID:
-      haltech_group11_unpack(&group11, msg.data, msg.can_dlc);
-      break;
-
-    case HALTECH_GROUP13_FRAME_ID:
-      haltech_group13_unpack(&group13, msg.data, msg.can_dlc);
-      break;
-
-    case HALTECH_GROUP15_FRAME_ID:
-      haltech_group15_unpack(&group15, msg.data, msg.can_dlc);
-      break;
-
-    case HALTECH_GROUP20_FRAME_ID:
-      haltech_group20_unpack(&group20, msg.data, msg.can_dlc);
-      break;
-
-    case HALTECH_GROUP24_FRAME_ID:
-      haltech_group24_unpack(&group24, msg.data, msg.can_dlc);
-      break;
-
-    case HALTECH_GROUP25_FRAME_ID:
-      haltech_group25_unpack(&group25, msg.data, msg.can_dlc);
-      break;
-
-    case HALTECH_GROUP37_FRAME_ID:
-      haltech_group37_unpack(&group37, msg.data, msg.can_dlc);
-      break;
-
-    case HALTECH_GROUP39_FRAME_ID:
-      haltech_group39_unpack(&group39, msg.data, msg.can_dlc);
-      break;
-
-    case HALTECH_GROUP40_FRAME_ID:
-      haltech_group40_unpack(&group40, msg.data, msg.can_dlc);
-      break;
-
-    case HALTECH_GROUP43_FRAME_ID:
-      haltech_group43_unpack(&group43, msg.data, msg.can_dlc);
-      break;
-
-    case HALTECH_GROUP45_FRAME_ID:
-      haltech_group45_unpack(&group45, msg.data, msg.can_dlc);
-      break;
-    }
-  }
-}
+#include "can_processor.h"
 
 // Test fixture
 class CANProcessingTest : public ::testing::Test {
@@ -116,22 +15,8 @@ protected:
         can->setBitrate(CAN_1000KBPS, MCP_8MHZ);
         can->setNormalMode();
 
-        // Reset all global storage groups to zero
-        memset(&group0, 0, sizeof(group0));
-        memset(&group1, 0, sizeof(group1));
-        memset(&group5, 0, sizeof(group5));
-        memset(&group8, 0, sizeof(group8));
-        memset(&group11, 0, sizeof(group11));
-        memset(&group13, 0, sizeof(group13));
-        memset(&group15, 0, sizeof(group15));
-        memset(&group20, 0, sizeof(group20));
-        memset(&group24, 0, sizeof(group24));
-        memset(&group25, 0, sizeof(group25));
-        memset(&group37, 0, sizeof(group37));
-        memset(&group39, 0, sizeof(group39));
-        memset(&group40, 0, sizeof(group40));
-        memset(&group43, 0, sizeof(group43));
-        memset(&group45, 0, sizeof(group45));
+        // Reset Haltech data structure
+        haltechData.init();
 
         // Reset counters
         canMessageCount = 0;
@@ -153,6 +38,9 @@ protected:
     }
 
     MCP2515* can;
+    HaltechData haltechData;
+    unsigned long canMessageCount;
+    boolean canConnected;
 };
 
 // Test Group 0 (Engine Basics: RPM, Manifold Pressure, Throttle)
@@ -167,15 +55,15 @@ TEST_F(CANProcessingTest, Group0_EngineBasics) {
     // Inject the message
     injectMessage(HALTECH_GROUP00_FRAME_ID, test_data, haltech_group00_pack);
 
-    // Process messages
-    readCanMessages(can);
+    // Process messages using THE ACTUAL FUNCTION from can_processor.cpp
+    readCanMessages(can, haltechData, canMessageCount, canConnected);
 
-    // Verify data was stored correctly in global group0
+    // Verify data was stored correctly
     EXPECT_EQ(canMessageCount, 1);
     EXPECT_TRUE(canConnected);
-    EXPECT_DOUBLE_EQ(haltech_group00_rpm_decode(group0.rpm), 3500.0);
-    EXPECT_DOUBLE_EQ(haltech_group00_manifold_pressure_decode(group0.manifold_pressure), 105.5);
-    EXPECT_DOUBLE_EQ(haltech_group00_throttle_position_decode(group0.throttle_position), 65.0);
+    EXPECT_DOUBLE_EQ(haltech_group00_rpm_decode(haltechData.group0.rpm), 3500.0);
+    EXPECT_DOUBLE_EQ(haltech_group00_manifold_pressure_decode(haltechData.group0.manifold_pressure), 105.5);
+    EXPECT_DOUBLE_EQ(haltech_group00_throttle_position_decode(haltechData.group0.throttle_position), 65.0);
 }
 
 // Test Group 1 (Pressures: Fuel, Oil, Engine Demand)
@@ -187,12 +75,12 @@ TEST_F(CANProcessingTest, Group1_Pressures) {
     test_data.engine_demand = haltech_group01_engine_demand_encode(85.5);
 
     injectMessage(HALTECH_GROUP01_FRAME_ID, test_data, haltech_group01_pack);
-    readCanMessages(can);
+    readCanMessages(can, haltechData, canMessageCount, canConnected);
 
     EXPECT_EQ(canMessageCount, 1);
-    EXPECT_NEAR(haltech_group01_fuel_pressure_decode(group1.fuel_pressure), 450.0, 0.2);
-    EXPECT_NEAR(haltech_group01_oil_pressure_decode(group1.oil_pressure), 580.0, 0.2);
-    EXPECT_NEAR(haltech_group01_engine_demand_decode(group1.engine_demand), 85.5, 0.1);
+    EXPECT_NEAR(haltech_group01_fuel_pressure_decode(haltechData.group1.fuel_pressure), 450.0, 0.2);
+    EXPECT_NEAR(haltech_group01_oil_pressure_decode(haltechData.group1.oil_pressure), 580.0, 0.2);
+    EXPECT_NEAR(haltech_group01_engine_demand_decode(haltechData.group1.engine_demand), 85.5, 0.1);
 }
 
 // Test Group 13 (Vehicle Speed)
@@ -202,10 +90,10 @@ TEST_F(CANProcessingTest, Group13_VehicleSpeed) {
     test_data.vehicle_speed = haltech_group13_vehicle_speed_encode(125.5);
 
     injectMessage(HALTECH_GROUP13_FRAME_ID, test_data, haltech_group13_pack);
-    readCanMessages(can);
+    readCanMessages(can, haltechData, canMessageCount, canConnected);
 
     EXPECT_EQ(canMessageCount, 1);
-    EXPECT_DOUBLE_EQ(haltech_group13_vehicle_speed_decode(group13.vehicle_speed), 125.5);
+    EXPECT_DOUBLE_EQ(haltech_group13_vehicle_speed_decode(haltechData.group13.vehicle_speed), 125.5);
 }
 
 // Test Group 20 (Temperatures: Coolant, Air, Fuel, Oil)
@@ -218,13 +106,13 @@ TEST_F(CANProcessingTest, Group20_Temperatures) {
     test_data.oil_temperature = haltech_group20_oil_temperature_encode(95.0);
 
     injectMessage(HALTECH_GROUP20_FRAME_ID, test_data, haltech_group20_pack);
-    readCanMessages(can);
+    readCanMessages(can, haltechData, canMessageCount, canConnected);
 
     EXPECT_EQ(canMessageCount, 1);
-    EXPECT_DOUBLE_EQ(haltech_group20_coolant_temperature_decode(group20.coolant_temperature), 92.5);
-    EXPECT_DOUBLE_EQ(haltech_group20_air_temperature_decode(group20.air_temperature), 28.0);
-    EXPECT_DOUBLE_EQ(haltech_group20_fuel_temperature_decode(group20.fuel_temperature), 35.5);
-    EXPECT_DOUBLE_EQ(haltech_group20_oil_temperature_decode(group20.oil_temperature), 95.0);
+    EXPECT_DOUBLE_EQ(haltech_group20_coolant_temperature_decode(haltechData.group20.coolant_temperature), 92.5);
+    EXPECT_DOUBLE_EQ(haltech_group20_air_temperature_decode(haltechData.group20.air_temperature), 28.0);
+    EXPECT_DOUBLE_EQ(haltech_group20_fuel_temperature_decode(haltechData.group20.fuel_temperature), 35.5);
+    EXPECT_DOUBLE_EQ(haltech_group20_oil_temperature_decode(haltechData.group20.oil_temperature), 95.0);
 }
 
 // Test Group 15 (Battery Voltage and Barometric Pressure)
@@ -235,11 +123,11 @@ TEST_F(CANProcessingTest, Group15_BatteryAndBaro) {
     test_data.barometric_pressure = haltech_group15_barometric_pressure_encode(101.3);
 
     injectMessage(HALTECH_GROUP15_FRAME_ID, test_data, haltech_group15_pack);
-    readCanMessages(can);
+    readCanMessages(can, haltechData, canMessageCount, canConnected);
 
     EXPECT_EQ(canMessageCount, 1);
-    EXPECT_NEAR(haltech_group15_battery_voltage_decode(group15.battery_voltage), 13.8, 0.1);
-    EXPECT_NEAR(haltech_group15_barometric_pressure_decode(group15.barometric_pressure), 101.3, 0.2);
+    EXPECT_NEAR(haltech_group15_battery_voltage_decode(haltechData.group15.battery_voltage), 13.8, 0.1);
+    EXPECT_NEAR(haltech_group15_barometric_pressure_decode(haltechData.group15.barometric_pressure), 101.3, 0.2);
 }
 
 // Test multiple messages from different groups
@@ -262,15 +150,15 @@ TEST_F(CANProcessingTest, MultipleGroups_Sequential) {
     data20.coolant_temperature = haltech_group20_coolant_temperature_encode(88.0);
     injectMessage(HALTECH_GROUP20_FRAME_ID, data20, haltech_group20_pack);
 
-    // Process all messages at once
-    readCanMessages(can);
+    // Process all messages at once using actual function
+    readCanMessages(can, haltechData, canMessageCount, canConnected);
 
     // Verify all groups were populated correctly
     EXPECT_EQ(canMessageCount, 3);
     EXPECT_TRUE(canConnected);
-    EXPECT_DOUBLE_EQ(haltech_group00_rpm_decode(group0.rpm), 4200.0);
-    EXPECT_DOUBLE_EQ(haltech_group13_vehicle_speed_decode(group13.vehicle_speed), 98.5);
-    EXPECT_DOUBLE_EQ(haltech_group20_coolant_temperature_decode(group20.coolant_temperature), 88.0);
+    EXPECT_DOUBLE_EQ(haltech_group00_rpm_decode(haltechData.group0.rpm), 4200.0);
+    EXPECT_DOUBLE_EQ(haltech_group13_vehicle_speed_decode(haltechData.group13.vehicle_speed), 98.5);
+    EXPECT_DOUBLE_EQ(haltech_group20_coolant_temperature_decode(haltechData.group20.coolant_temperature), 88.0);
 }
 
 // Test that data persists across multiple readCanMessages calls
@@ -280,39 +168,39 @@ TEST_F(CANProcessingTest, DataPersistence_AcrossReads) {
     haltech_group00_init(&data0);
     data0.rpm = haltech_group00_rpm_encode(3000.0);
     injectMessage(HALTECH_GROUP00_FRAME_ID, data0, haltech_group00_pack);
-    readCanMessages(can);
+    readCanMessages(can, haltechData, canMessageCount, canConnected);
 
     EXPECT_EQ(canMessageCount, 1);
-    EXPECT_DOUBLE_EQ(haltech_group00_rpm_decode(group0.rpm), 3000.0);
+    EXPECT_DOUBLE_EQ(haltech_group00_rpm_decode(haltechData.group0.rpm), 3000.0);
 
     // Second batch: Update RPM
     data0.rpm = haltech_group00_rpm_encode(3500.0);
     injectMessage(HALTECH_GROUP00_FRAME_ID, data0, haltech_group00_pack);
-    readCanMessages(can);
+    readCanMessages(can, haltechData, canMessageCount, canConnected);
 
     EXPECT_EQ(canMessageCount, 2);
-    EXPECT_DOUBLE_EQ(haltech_group00_rpm_decode(group0.rpm), 3500.0);
+    EXPECT_DOUBLE_EQ(haltech_group00_rpm_decode(haltechData.group0.rpm), 3500.0);
 
     // Third batch: Add different group (speed), RPM should remain
     struct haltech_group13_t data13;
     haltech_group13_init(&data13);
     data13.vehicle_speed = haltech_group13_vehicle_speed_encode(75.0);
     injectMessage(HALTECH_GROUP13_FRAME_ID, data13, haltech_group13_pack);
-    readCanMessages(can);
+    readCanMessages(can, haltechData, canMessageCount, canConnected);
 
     EXPECT_EQ(canMessageCount, 3);
-    EXPECT_DOUBLE_EQ(haltech_group00_rpm_decode(group0.rpm), 3500.0);  // Should still be 3500
-    EXPECT_DOUBLE_EQ(haltech_group13_vehicle_speed_decode(group13.vehicle_speed), 75.0);
+    EXPECT_DOUBLE_EQ(haltech_group00_rpm_decode(haltechData.group0.rpm), 3500.0);  // Should still be 3500
+    EXPECT_DOUBLE_EQ(haltech_group13_vehicle_speed_decode(haltechData.group13.vehicle_speed), 75.0);
 }
 
 // Test empty queue doesn't crash or change state
 TEST_F(CANProcessingTest, NoMessages_NoChanges) {
     // Don't inject any messages
-    readCanMessages(can);
+    readCanMessages(can, haltechData, canMessageCount, canConnected);
 
     EXPECT_EQ(canMessageCount, 0);
     EXPECT_FALSE(canConnected);
-    EXPECT_EQ(group0.rpm, 0);  // Should still be zero-initialized
+    EXPECT_EQ(haltechData.group0.rpm, 0);  // Should still be zero-initialized
 }
 
 // Test rapid message burst
@@ -326,12 +214,12 @@ TEST_F(CANProcessingTest, RapidMessageBurst) {
     }
 
     // Process all at once
-    readCanMessages(can);
+    readCanMessages(can, haltechData, canMessageCount, canConnected);
 
     EXPECT_EQ(canMessageCount, 10);
     EXPECT_TRUE(canConnected);
     // Last message should be RPM = 1000 + (9 * 500) = 5500
-    EXPECT_DOUBLE_EQ(haltech_group00_rpm_decode(group0.rpm), 5500.0);
+    EXPECT_DOUBLE_EQ(haltech_group00_rpm_decode(haltechData.group0.rpm), 5500.0);
 }
 
 // Test Group 39 (Gear and Wideband Overall)
@@ -342,11 +230,11 @@ TEST_F(CANProcessingTest, Group39_GearAndWideband) {
     test_data.wideband_overall = haltech_group39_wideband_overall_encode(14.7);  // AFR
 
     injectMessage(HALTECH_GROUP39_FRAME_ID, test_data, haltech_group39_pack);
-    readCanMessages(can);
+    readCanMessages(can, haltechData, canMessageCount, canConnected);
 
     EXPECT_EQ(canMessageCount, 1);
-    EXPECT_DOUBLE_EQ(haltech_group39_gear_decode(group39.gear), 4.0);
-    EXPECT_NEAR(haltech_group39_wideband_overall_decode(group39.wideband_overall), 14.7, 0.01);
+    EXPECT_DOUBLE_EQ(haltech_group39_gear_decode(haltechData.group39.gear), 4.0);
+    EXPECT_NEAR(haltech_group39_wideband_overall_decode(haltechData.group39.wideband_overall), 14.7, 0.01);
 }
 
 // Test all groups can be populated simultaneously
@@ -372,15 +260,15 @@ TEST_F(CANProcessingTest, AllGroups_Simultaneous) {
     d20.coolant_temperature = haltech_group20_coolant_temperature_encode(90.0);
     injectMessage(HALTECH_GROUP20_FRAME_ID, d20, haltech_group20_pack);
 
-    // Process all
-    readCanMessages(can);
+    // Process all using ACTUAL production function
+    readCanMessages(can, haltechData, canMessageCount, canConnected);
 
     // Verify
     EXPECT_EQ(canMessageCount, 4);
-    EXPECT_DOUBLE_EQ(haltech_group00_rpm_decode(group0.rpm), 5000.0);
-    EXPECT_DOUBLE_EQ(haltech_group01_fuel_pressure_decode(group1.fuel_pressure), 400.0);
-    EXPECT_DOUBLE_EQ(haltech_group13_vehicle_speed_decode(group13.vehicle_speed), 100.0);
-    EXPECT_DOUBLE_EQ(haltech_group20_coolant_temperature_decode(group20.coolant_temperature), 90.0);
+    EXPECT_DOUBLE_EQ(haltech_group00_rpm_decode(haltechData.group0.rpm), 5000.0);
+    EXPECT_NEAR(haltech_group01_fuel_pressure_decode(haltechData.group1.fuel_pressure), 400.0, 0.2);
+    EXPECT_DOUBLE_EQ(haltech_group13_vehicle_speed_decode(haltechData.group13.vehicle_speed), 100.0);
+    EXPECT_DOUBLE_EQ(haltech_group20_coolant_temperature_decode(haltechData.group20.coolant_temperature), 90.0);
 }
 
 int main(int argc, char **argv) {
