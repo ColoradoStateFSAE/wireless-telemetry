@@ -93,9 +93,13 @@ void setup()
   SPI1.begin();
 
   // Initialize CAN1 connection
-  can.emplace(MCP2515(9, 10000000, &SPI1));
-  can->setBitrate(CAN_1000KBPS, MCP_8MHZ);
+  can.emplace(MCP2515(9, 10000000UL, &SPI1));
+  can->reset();
+  can->setBitrate(CAN_1000KBPS, MCP_16MHZ);
   can->setNormalMode();
+
+  // Setup CAN filters and masks
+  setupCAN();
 
   // Initialize data structures to zero
   memset(&group0, 0, sizeof(group0));
@@ -439,6 +443,7 @@ void debugStatus()
   Serial.printf("CAN Messages Received: %d\n", canMessageCount);
   Serial.printf("Telemetry Packets Sent: %d\n", telemetrySentCount);
   Serial.printf("System Voltage: %fV\n", readRegulatorVoltage());
-  Serial.printf("GPS Status: %s\n", GPS_SERIAL.available() ? "Interface unavailable" : gps.location.isValid() ? "Valid" : "Searching...");
+  Serial.printf("GPS Status: %s\n", GPS_SERIAL.available() ? "Interface unavailable" : gps.location.isValid() ? "Valid"
+                                                                                                              : "Searching...");
   Serial.println("=======================\n");
 }
