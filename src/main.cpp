@@ -404,6 +404,7 @@ void sendTelemetry()
     // Send the protobuf data via radio
     RADIO_SERIAL.write(protobuf_buffer, stream.bytes_written);
     RADIO_SERIAL.print("~!");
+    RADIO_SERIAL.flush();
     telemetrySentCount++;
   }
   else
